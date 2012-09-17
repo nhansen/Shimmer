@@ -1,0 +1,5 @@
+Shimmer
+
+Shimmer is a program designed to identify somatic changes when run on two BAM files, one from normal tissue and the other from a tumor sample.  It uses Fisher's exact test along with multiple testing correction (Benjamini-Hochberg) to find significant differences between allele composition with a specified false discovery rate.
+
+

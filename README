@@ -2,4 +2,5 @@ Shimmer
 
 Shimmer is a program designed to identify somatic changes when run on two BAM files, one from normal tissue and the other from a tumor sample.  It uses Fisher's exact test along with multiple testing correction (Benjamini-Hochberg) to find significant differences between allele composition with a specified false discovery rate.
 
+Shimmer was written by Nancy Fisher Hansen, a staff scientist in the Genome Technology Branch (GTB) of NHGRI, an institute at the National Institutes of Health.  Nancy can be reached at nhansen@mail.nih.gov.
 

@@ -23,7 +23,7 @@ use vars qw($VERSION);
 our %Opt;
 our $R_EXE = 'R';
 our $ANNOVAR_EXE = 'annotate_variation.pl';
-our $INSTALL_DIR = '/home/nhansen/projects/gtb';
+our $INSTALL_DIR = $ENV{'SHIMMERCDIR'} || '/home/nhansen/projects/gtb';
 
 our @SOM_COLORS = ( {'power' => 0.0, 'color' => '255,0,0'}, # red
                     {'power' => 0.4, 'color' => '255,100,0'}, # orange
@@ -1049,7 +1049,7 @@ sub process_commandline {
                 region=s ref=s counts som_file=s
                 het_file=s bh vs_file=s vcf_file=s max_q=f test_fof=s
                 outfile=s outdir=s symbols input=s plots power covg minqual=i min_som_reads=i
-                viterbi insert=i min_max=s annovar=s annovardb=s buildver=s skip_tests skip_cna
+                viterbi insert=i min_max=s annovar=s annovardb=s buildver=s skip_tests skip_cna!
                 annotate gauss help+ version verbose 
                )) || pod2usage(0);
     if ($Opt{help})    { pod2usage(verbose => $Opt{help}); }

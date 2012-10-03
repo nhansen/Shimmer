@@ -1,0 +1,17 @@
+shimmer.pl
+Build.PL
+MANIFEST			This list of files
+t/1_load.t
+t/2_call.t
+t/testbam1.bam
+t/testbam2.bam
+t/testref.fa
+t/testref.fa.fai
+README
+LEGAL
+Makefile
+printCompCounts/Makefile
+printCompCounts/main.c
+printCompCounts/params.c
+printCompCounts/printcomp.h
+META.yml

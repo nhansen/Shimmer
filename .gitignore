@@ -1,0 +1,8 @@
+printCompCounts/*.o
+printCompCounts/printCompCounts
+umdhmm-v1.02-gauss/
+*.tar.gz
+_build/
+t/testout/
+blib/
+Build

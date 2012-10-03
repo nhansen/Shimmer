@@ -1,0 +1,15 @@
+---
+abstract: 'Script for calling somatic mutations from matched tumor and normal BAM files'
+author:
+  - 'GTB Perl Programmers'
+configure_requires:
+  Module::Build: 0.36
+generated_by: 'Module::Build version 0.3601'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: shimmer
+resources:
+  license: http://dev.perl.org/licenses/
+version: 0.1

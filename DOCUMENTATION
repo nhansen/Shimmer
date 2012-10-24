@@ -1,0 +1,47 @@
+SHIMMER(1)            User Contributed Perl Documentation           SHIMMER(1)
+
+NAME
+       shimmer - Program to call somatic single base changes and copy number alterations from matched tumor and normal next generation sequences.
+
+SYNOPSIS
+       shimmer.pl <normal_sample_bam_file> <tumor_sample_bam_file> --ref <reference_fasta_file>
+
+DESCRIPTION
+       This script uses samtools to process two BAM formatted files (http://samtools.sourceforge.net) and call differences between the two files across a specified region.
+
+INPUT
+       The first argument to shimmer is the path of a fasta-formatted file for the reference sequence.  This fasta file must have a corresponding samtools index file with the same name except for an appended
+       ".fai".
+
+       The first and second arguments to shimmer are the paths of two BAM-formatted file of aligned sequencing reads.  These files must be sorted and indexed using samtools prior to running shimmer.
+
+OUTPUT
+OPTIONS
+       --region chr
+       --region chr:start-end
+            This option specifies a region as a reference entry optionally followed by a position range, and causes variants to be called only in that region.
+
+       --ref reference_fasta_file
+            This option specifies the reference file to which the reads in the BAM files were aligned.  It is a required option.
+
+       --minqual minimum_base_quality_score
+            This option specifies a minimum phred quality score that can be required for read bases to be included in the counts for the Fisher's exact tests.
+
+       --max_q maximum_acceptable_false_discovery_rate
+            This option specifies the maximum FDR level to be set for the Benjamini-Hochberg procedure for somatic SNV calling.
+
+AUTHOR
+        Nancy F. Hansen - nhansen@mail.nih.gov
+
+LEGAL
+       This software/database is "United States Government Work" under the terms of the United States Copyright Act.  It was written as part of the authors' official duties for the United States Government
+       and thus cannot be copyrighted.  This software/database is freely available to the public for use without a copyright notice.  Restrictions cannot be placed on its present or future use.
+
+       Although all reasonable efforts have been taken to ensure the accuracy and reliability of the software and data, the National Human Genome Research Institute (NHGRI) and the U.S. Government does not
+       and cannot warrant the performance or results that may be obtained by using this software or data.  NHGRI and the U.S.  Government disclaims all warranties as to performance, merchantability or fitness
+       for any particular purpose.
+
+       In any work or product derived from this material, proper attribution of the authors as the source of the software or data should be made, using "NHGRI Genome Technology Branch" as the citation.
+
+perl v5.8.8                       2012-10-24                        SHIMMER(1)
+

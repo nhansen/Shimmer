@@ -29,4 +29,4 @@ bc.. perl Build.PL
 ./Build test
 ./Build install
 
-* For local installation, call perl Build.PL with "--install_base $HOME"
+p. * For local installation, call perl Build.PL with "--install_base $HOME"

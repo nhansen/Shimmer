@@ -20,17 +20,13 @@ h2. Build Instructions
 
 h3. Clone the Shimmer repository
 
-
 bc. git clone git://github.com/nhansen/Shimmer.git
-
 
 h3. Build Shimmer
 
-
-bc. perl Build.PL
-	./Build
-	./Build test
-	./Build install
-
+bc.. perl Build.PL
+./Build
+./Build test
+./Build install
 
 * For local installation, call perl Build.PL with "--install_base $HOME"

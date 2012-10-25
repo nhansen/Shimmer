@@ -1,5 +1,6 @@
 shimmer.pl
 Build.PL
+check_statmod.R
 MANIFEST			This list of files
 t/1_load.t
 t/2_call.t
@@ -9,6 +10,7 @@ t/testref.fa
 t/testref.fa.fai
 README
 LEGAL
+INSTALL
 Makefile
 printCompCounts/Makefile
 printCompCounts/main.c

@@ -1,0 +1,36 @@
+Shimmer package
+
+Detects changes in next generation sequence reads from tumors by comparing to sequence reads from matched normal samples.
+
+INSTALLATION:
+
+To install system-wide (root permissions required):
+
+    perl Build.PL
+    ./Build
+    ./Build test
+    ./Build install
+
+For local user installation:
+
+    perl Build.PL --install_base $HOME
+    ./Build
+    ./Build test
+    ./Build install
+
+    Then, to access the installed scripts, $HOME/bin must be in your path:
+
+        export PATH=$HOME/bin:$PATH
+    
+    And $HOME/lib/perl5 must be in your PERL5LIB path:
+
+        export PERL5LIB=$HOME/lib/perl5:$PERL5LIB
+
+    The above export commands can be added to your .profile or .bash_profile
+    in order to make them available each time you log in.
+
+USAGE:
+
+Run perldoc shimmer.pl for complete documentation.
+
+

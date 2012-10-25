@@ -4,7 +4,10 @@ Detects changes in next generation sequence reads from tumors by comparing to se
 
 INSTALLATION:
 
-To install system-wide (root permissions required):
+In addition to the software included in this package, the user must have a working copy of 
+samtools installed (version 0.1.16 or greater), as well as R with the "statmod" package.
+
+To install Shimmer system-wide (root permissions required):
 
     perl Build.PL
     ./Build

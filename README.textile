@@ -24,7 +24,8 @@ bc. git clone git://github.com/nhansen/Shimmer.git
 
 h3. Build Shimmer
 
-bc.. perl Build.PL
+bc.. cd Shimmer
+perl Build.PL
 ./Build
 ./Build test
 ./Build install

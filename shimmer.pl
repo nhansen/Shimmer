@@ -23,7 +23,6 @@ use vars qw($VERSION);
 our %Opt;
 our $R_EXE = 'R';
 our $ANNOVAR_EXE = 'annotate_variation.pl';
-our $INSTALL_DIR = $ENV{'SHIMMERCDIR'} || '/home/nhansen/projects/gtb';
 
 our @SOM_COLORS = ( {'power' => 0.0, 'color' => '255,0,0'}, # red
                     {'power' => 0.4, 'color' => '255,100,0'}, # orange
@@ -47,10 +46,10 @@ $short_program_name =~ s:.*/::; # without path
 
 my $Usage = "Usage: $short_program_name <--region chr1:1000-2000> <--ref reference fasta> <bam file from normal sample> <bam file from mutated sample>\nFor more information, type \"perldoc $short_program_name\".";
 
-my $printcounts_exe = "$INSTALL_DIR/c/printCompCounts/printCompCounts";
-my $baumwelch_exe = "$INSTALL_DIR/c/umdhmm-v1.02-gauss/sh.run_esthmm";
-my $viterbi_exe = "$INSTALL_DIR/c/umdhmm-v1.02-gauss/sh.run_viterbi";
-my $hmm_model = "$INSTALL_DIR/c/umdhmm-v1.02-gauss/default_ng_model.hmm";
+my $printcounts_exe = "printCompCounts";
+my $baumwelch_exe = "sh.run_esthmm";
+my $viterbi_exe = "sh.run_viterbi";
+my $hmm_model = "c/umdhmm-v1.02-gauss/default_ng_model.hmm";
 
 process_commandline();
 

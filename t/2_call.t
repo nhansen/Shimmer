@@ -19,6 +19,7 @@ my $testref = 't/testref.fa';
 my $testbam1 = 't/testbam1.bam';
 my $testbam2 = 't/testbam2.bam';
 my $outdir = 't/testout';
-$out = `perl -w -I lib $script --ref $testref --outdir $outdir $testbam1 $testbam2 2>&1`;
+$ENV{PATH} = "./c:$ENV{PATH}";
+system("perl -w -I lib $script --ref $testref --outdir $outdir $testbam1 $testbam2 2>&1");
 $out = `awk '\$1==1 {print \$3}' t/testout/somatic_diffs.vs`;
 like $out, qr/11589021/, "$script variant";

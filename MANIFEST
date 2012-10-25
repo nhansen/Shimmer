@@ -9,6 +9,7 @@ t/testbam2.bam
 t/testref.fa
 t/testref.fa.fai
 README
+DOCUMENTATION
 LEGAL
 INSTALL
 Makefile

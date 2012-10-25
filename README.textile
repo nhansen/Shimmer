@@ -1,0 +1,33 @@
+h1. Shimmer
+
+p. Shimmer is a program designed to identify somatic changes when run on two BAM files, 
+one from normal tissue and the other from a tumor sample.  It uses Fisher's exact test 
+along with multiple testing correction (Benjamini-Hochberg) to find significant 
+differences between allele composition with a specified false discovery rate.
+
+p. Shimmer was written by Nancy Fisher Hansen, a staff scientist in the Genome Technology 
+Branch (GTB) of NHGRI, an institute at the National Institutes of Health.  Nancy can be 
+reached at nhansen@mail.nih.gov.
+
+h2. Build Dependencies
+
+* git
+* samtools 0.1.16 or above
+* R 1.6.1 or above
+* R "statmod" package (http://cran.r-project.org/web/packages/statmod/index.html)
+
+h2. Build Instructions
+
+h3. Clone the Shimmer repository
+* Clone the git repository
+
+bc..	git clone git://github.com/nhansen/Shimmer.git
+
+h3. Build Shimmer
+
+bc..	perl Build.PL
+	./Build
+	./Build test
+	./Build install
+
+* For local installation, call perl Build.PL with "--install_dir $HOME".

@@ -5,7 +5,9 @@ Detects changes in next generation sequence reads from tumors by comparing to se
 INSTALLATION:
 
 In addition to the software included in this package, the user must have a working copy of 
-samtools installed (version 0.1.16 or greater), as well as R with the "statmod" package.
+samtools installed and in ones path (version 0.1.16 or greater), as well as R (version 1.6.1
+or greater) with the "statmod" library (available at 
+http://cran.r-project.org/web/packages/statmod/index.html).
 
 To install Shimmer system-wide (root permissions required):
 

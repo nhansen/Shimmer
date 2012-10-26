@@ -1,47 +1,138 @@
-SHIMMER(1)            User Contributed Perl Documentation           SHIMMER(1)
+MMER(1)            User Contributed Perl Documentation           SHIMMER(1)
 
 NAME
-       shimmer - Program to call somatic single base changes and copy number alterations from matched tumor and normal next generation sequences.
+       shimmer.pl - call somatic single base changes from matched tumor and normal next genera-
+       tion sequences.
 
 SYNOPSIS
-       shimmer.pl <normal_sample_bam_file> <tumor_sample_bam_file> --ref <reference_fasta_file>
+       Tally counts of alleles in two BAM files, and write out data for sites with unexpectedly
+       large deviations in allele frequencies, controlling the false discovery rate (FDR) using
+       the Benjamini-Hochberg procedure:
+
+         shimmer.pl [options] <normal_bam_file> <tumor_bam_file> --ref <ref_fasta_file>
+
+       Run shimmer.pl -man for a detailed description of options and the output files.
 
 DESCRIPTION
-       This script uses samtools to process two BAM formatted files (http://samtools.sourceforge.net) and call differences between the two files across a specified region.
+       The script creates a randomly named directory (run_shimmer_XXXXXX) in the user's current
+       working directory, and reads through the two BAM files provided as options with samtools
+       mpileup, recording the normal sample's genotype, as well as the counts of the two most
+       frequently seen alleles at each site.  It then uses the R "statmod" library to calculate
+       p-values with the Fisher's exact test on each site where a minimum threshold of alternate
+       allele copies are seen (see --min_som_reads option).
+
+       Once all p-values have been calculated, shimmer.pl uses the Benjamini-Hochberg procedure
+       to report only changes with a false discovery rate below the specified maximum FDR (see
+       --max_q option).  The single-nucleotide variants are reported in VarSifter and VCF formats
+       in the files "somatic_diffs.vs" and "somatic_diffs.vcf", respectively.
 
 INPUT
-       The first argument to shimmer is the path of a fasta-formatted file for the reference sequence.  This fasta file must have a corresponding samtools index file with the same name except for an appended
-       ".fai".
+       The first and second arguments to shimmer are the paths of two BAM-formatted files of
+       aligned sequencing reads.  These files must be sorted using samtools prior to running
+       shimmer, and indexed if the --region option wil be used.
 
-       The first and second arguments to shimmer are the paths of two BAM-formatted file of aligned sequencing reads.  These files must be sorted and indexed using samtools prior to running shimmer.
+       The path of a valid, fasta-formatted file for the reference sequence must be passed with
+       the option --ref.  This fasta file must have a corresponding samtools index file with the
+       same name except for an appended ".fai" if the --region option will be used.
 
-OUTPUT
 OPTIONS
-       --region chr
+       --region chr or
        --region chr:start-end
-            This option specifies a region as a reference entry optionally followed by a position range, and causes variants to be called only in that region.
+            This option specifies a region as a reference entry (chromosome), optionally followed
+            by a position range, and causes the program to limit somatic call to only that
+            region.  By default, the program calls variants in all regions that covered by reads
+            in both BAM files.
 
        --ref reference_fasta_file
-            This option specifies the reference file to which the reads in the BAM files were aligned.  It is a required option.
+            This option specifies the reference file to which the reads in the BAM files were
+            aligned.  It is a required option.
 
-       --minqual minimum_base_quality_score
-            This option specifies a minimum phred quality score that can be required for read bases to be included in the counts for the Fisher's exact tests.
+       --minqual min_base_quality_score
+            This option specifies a minimum phred quality score to be required for read bases to
+            be included in the counts for the Fisher's exact tests.  By default, all bases are
+            included.
 
-       --max_q maximum_acceptable_false_discovery_rate
-            This option specifies the maximum FDR level to be set for the Benjamini-Hochberg procedure for somatic SNV calling.
+       --max_q max_acceptable_FDR
+            This option specifies the maximum FDR level to be set for the Benjamini-Hochberg pro-
+            cedure for multiple testing correction.
+
+OUTPUT
+       The single nucleotide variants (sSNVs) are written in both VarSifter and VCF formats.
+
+       The fields in the VarSifter file are as follows:
+
+       Index
+            A numerical identifier for each variant.
+
+       Chr  The entry name of the reference sequence in the BAM files and reference fasta file.
+
+       LeftFlank
+            Position one base to the left of the variant base.
+
+       RightFlank
+            Position one base to the right of the variant base.
+
+       ref_allele
+            Reference base.
+
+       var_allele
+            Variant base.
+
+       muttype
+            Type of mutation.  In this version of shimmer.pl, all variants are of type "SNP".
+            Future versions of shimmer.pl will also call somatic variants of type "INDEL".
+
+       normal_covg
+            Number of reads covering this position in the normal BAM file.  If the --minqual
+            option has been used, only reads with the required base quality at this position will
+            be counted.
+
+       tumor_covg
+            Number of reads covering this position in the tumor BAM file.  If the --minqual
+            option has been used, only reads with the required base quality at this position will
+            be counted.
+
+       normal_ratio
+            Ratio of reads with the alternate base to total reads covering this position in the
+            normal BAM file.  If the --minqual option has been used, only reads with the required
+            base quality at this position will be counted.
+
+       tumor_ratio
+            Ratio of reads with the alternate base to total reads covering this position in the
+            tumor BAM file.  If the --minqual option has been used, only reads with the required
+            base quality at this position will be counted.
+
+       q_value
+            The expected value of the false discovery rate if all variants with q_value values
+            higher than this value were excluded.
+
+       The VCF file conforms to the standards in VCFv4.0, but doesn't include as much information
+       as the VarSifter file does.  In particular, for each somatic SNV predicted, it reports the
+       reference and alternate allele, the q-value (as described above in the VarSifter file
+       description), and the genotype (always 0/0 for the normal and 0/1 for the tumor) and depth
+       of coverage for each sample.  Suggestions are welcome for how to best utilize VCF format
+       for these data, as it's a work in progress!
 
 AUTHOR
         Nancy F. Hansen - nhansen@mail.nih.gov
 
 LEGAL
-       This software/database is "United States Government Work" under the terms of the United States Copyright Act.  It was written as part of the authors' official duties for the United States Government
-       and thus cannot be copyrighted.  This software/database is freely available to the public for use without a copyright notice.  Restrictions cannot be placed on its present or future use.
+       This software/database is "United States Government Work" under the terms of the United
+       States Copyright Act.  It was written as part of the authors' official duties for the
+       United States Government and thus cannot be copyrighted.  This software/database is freely
+       available to the public for use without a copyright notice.  Restrictions cannot be placed
+       on its present or future use.
 
-       Although all reasonable efforts have been taken to ensure the accuracy and reliability of the software and data, the National Human Genome Research Institute (NHGRI) and the U.S. Government does not
-       and cannot warrant the performance or results that may be obtained by using this software or data.  NHGRI and the U.S.  Government disclaims all warranties as to performance, merchantability or fitness
-       for any particular purpose.
+       Although all reasonable efforts have been taken to ensure the accuracy and reliability of
+       the software and data, the National Human Genome Research Institute (NHGRI) and the U.S.
+       Government does not and cannot warrant the performance or results that may be obtained by
+       using this software or data.  NHGRI and the U.S.  Government disclaims all warranties as
+       to performance, merchantability or fitness for any particular purpose.
 
-       In any work or product derived from this material, proper attribution of the authors as the source of the software or data should be made, using "NHGRI Genome Technology Branch" as the citation.
+       In any work or product derived from this material, proper attribution of the authors as
+       the source of the software or data should be made, using "NHGRI Genome Technology Branch"
+       as the citation.
 
-perl v5.8.8                       2012-10-24                        SHIMMER(1)
+perl v5.8.8                       2012-10-26                        SHIMMER(1)
+
 

@@ -1136,6 +1136,25 @@ default, all bases are included.
 This option specifies the maximum FDR level to be set for the 
 Benjamini-Hochberg procedure for multiple testing correction.
 
+=item B<--annovardb> I<path_to_annovar_db_directory>
+
+This option allows the user to specify an ANNOVAR database
+directory against which to annotate variants (see Wang et al, 
+"ANNOVAR: functional annotations of genetic variants from 
+high-throughput sequencing data". Nucl. Acids Res. 38, 2010).
+
+=item B<--buildver> <hg18, hg19, etc.>
+
+This option is passed directly to ANNOVAR.
+
+=item B<--annovar> I<path_to_annovar>
+
+This option allows the user to specify a particular path to the
+"annotate_variants.pl" script from ANNOVAR.  As a default, if 
+the annovardb option has been specified (see above), Shimmer 
+will call the first copy of "annotate_variation.pl" in the user's
+path.
+
 =back
 
 =head1 OUTPUT
@@ -1143,7 +1162,9 @@ Benjamini-Hochberg procedure for multiple testing correction.
 The single nucleotide variants (sSNVs) are written in both VarSifter and VCF
 formats.
 
-The fields in the VarSifter file are as follows:
+The fields in the VarSifter file (see Teer et al., "VarSifter: Visualizing and
+analyzing exome-scale sequence variation data on a desktop computer".
+Bioinformatics 28, 2012) are as follows:
 
 =over 5
 

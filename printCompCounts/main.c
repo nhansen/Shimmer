@@ -40,6 +40,7 @@ main(int argc, char **argv)
 	char *charPtr;
 	char *chrPtr;
 	char cmd[1000000];
+	char tmpcmd[1000000];
 	char mapQual, baseQual;
 	int baseQualNo;
         char nextChar;
@@ -69,12 +70,19 @@ main(int argc, char **argv)
 
 	/* specify reference fasta file, then chromosome, then normal bam file, then mutated bam file */
         chunkSize = 4096;
+
+	/* base command which is always run */
+	sprintf(cmd, "samtools mpileup -f %s -BQ0 -d100000 -A %s %s", parameters->fasta, parameters->bam1, parameters->bam2);
+
         if (strcmp(parameters->region, "") != 0) {
-	    sprintf(cmd, "samtools mpileup -f %s -r %s -BQ0 -d100000 -A %s %s", parameters->fasta, parameters->region, parameters->bam1, parameters->bam2);
+		sprintf(tmpcmd, "%s -r %s", &cmd, parameters->region);
+		sprintf(cmd, "%s", &tmpcmd);
         }
-        else {
-	    sprintf(cmd, "samtools mpileup -f %s -BQ0 -d100000 -A %s %s", parameters->fasta, parameters->bam1, parameters->bam2);
-        }
+
+	if (parameters->mapqual != 0) {
+		sprintf(tmpcmd, "%s -q %i", &cmd, parameters->mapqual);
+		sprintf(cmd, "%s", &tmpcmd);
+	}
 
         /* check to be sure we can open mpileup */
 	if ((fil = popen(cmd,"r")) == NULL) {

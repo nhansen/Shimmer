@@ -61,6 +61,7 @@ my $bam2 = $ARGV[1];
 my $ref_fasta = $Opt{'ref'};
 my $region = $Opt{'region'};
 my $minqual = $Opt{'minqual'}; # disregard any base with quality lower than minqual
+my $mapqual = $Opt{'mapqual'}; # disregard any read with mapping quality lower than mapqual
 
 if ($Opt{'counts'}) {
 
@@ -74,7 +75,7 @@ if ($Opt{'counts'}) {
     my $het_file = $Opt{'het_file'};
 
     # print counts of different alleles at all interesting positions
-    print_counts($ref_fasta, $bam1, $bam2, $region, $minqual, $som_file, $het_file, $printcounts_exe);
+    print_counts($ref_fasta, $bam1, $bam2, $region, $minqual, $mapqual, $som_file, $het_file, $printcounts_exe);
     # test counts for significance with Fisher's exact test (without mult testing corr)
     test_counts($som_file, $het_file);
 }
@@ -162,6 +163,7 @@ sub run_shimmer {
         my $command = "$shimmer --counts --ref $ref_fasta $bam1 $bam2 --min_som_reads $Opt{min_som_reads} --som_file $tmpdir/som_counts.txt --het_file $tmpdir/het_counts.txt";
         $command .= " --region $region" if ($region);
         $command .= " --minqual $minqual" if ($minqual);
+        $command .= " --mapqual $mapqual" if ($mapqual);
         system($command) == 0
             or die "Failed to run $shimmer --counts!\n";
     }
@@ -216,6 +218,7 @@ sub print_counts {
     my $bam2 = shift;
     my $region = shift;
     my $minqual = shift;
+    my $mapqual = shift;
     my $som_file = shift;
     my $het_file = shift;
     my $printcounts_exe = shift;
@@ -229,6 +232,7 @@ sub print_counts {
     my $printcounts_call = "$printcounts_exe -bam1 $bam1 -bam2 $bam2 -fasta $ref_fasta";
     $printcounts_call .= " -region $region" if ($region);
     $printcounts_call .= " -minqual $minqual" if ($minqual);
+    $printcounts_call .= " -mapqual $mapqual" if ($mapqual);
     
     print "Calling $printcounts_call\n";
 
@@ -1042,7 +1046,8 @@ sub process_commandline {
     GetOptions(\%Opt, qw(
                 region=s ref=s counts som_file=s
                 het_file=s bh vs_file=s vcf_file=s max_q=f test_fof=s
-                outfile=s outdir=s symbols input=s plots power covg minqual=i min_som_reads=i
+                outfile=s outdir=s symbols input=s plots power covg minqual=i 
+                min_som_reads=i mapqual=i
                 viterbi insert=i annovar=s annovardb=s buildver=s skip_tests skip_cna!
                 annotate gauss help+ version verbose 
                )) || pod2usage(0);
@@ -1130,6 +1135,12 @@ were aligned.  It is a required option.
 This option specifies a minimum phred quality score to be required for 
 read bases to be included in the counts for the Fisher's exact tests.  By
 default, all bases are included.
+
+=item B<--mapqual> I<min_mapping_quality_score>
+
+This option specifies a minimum read mapping quality score to be required for 
+a read's bases to be included in the counts for the Fisher's exact tests.  By
+default, all reads' bases are included.
 
 =item B<--max_q> I<max_acceptable_FDR>
 

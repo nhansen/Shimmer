@@ -46,10 +46,16 @@ OPTIONS
        --ref reference_fasta_file
             This option specifies the reference file to which the reads in the BAM files were
             aligned.  It is a required option.
+
        --minqual min_base_quality_score
             This option specifies a minimum phred quality score to be required for read bases
             to be included in the counts for the Fisher's exact tests.  By default, all bases
             are included.
+
+       --mapqual min_mapping_quality_score
+            This option specifies a minimum mapping quality score to be required for all reads
+            to be included in the counts for the Fisher's exact tests.  By default, all reads'
+            bases are included.
 
        --max_q max_acceptable_FDR
             This option specifies the maximum FDR level to be set for the Benjamini-Hochberg

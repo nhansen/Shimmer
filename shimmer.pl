@@ -1166,6 +1166,13 @@ the annovardb option has been specified (see above), Shimmer
 will call the first copy of "annotate_variation.pl" in the user's
 path.
 
+=item B<--outdir> <path_to_output_directory>
+
+This option specifies a directory in which to place result files for this run.  If the 
+directory doesn't exist, it will be created.  By default, Shimmer will create a randomly named
+directory called "run_shimmer_XXXXXX" within the current working directory (where "XXXXXX"
+is a random string of length 6).
+
 =back
 
 =head1 OUTPUT

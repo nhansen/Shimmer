@@ -76,6 +76,12 @@ OPTIONS
             specified (see above), Shimmer will call the first copy of "annotate_varia-
             tion.pl" in the user's path.
 
+       --outdir <path_to_output_directory>
+            This option specifies a directory in which to place result files for this run.
+            If the directory doesn't exist, it will be created.  By default, Shimmer will
+            create a randomly named directory called "run_shimmer_XXXXXX" within the current
+            working directory (where "XXXXXX" is a random string of length 6).
+
 OUTPUT
        The single nucleotide variants (sSNVs) are written in both VarSifter and VCF formats.
 

@@ -1145,7 +1145,7 @@ default, all reads' bases are included.
 =item B<--max_q> I<max_acceptable_FDR>
 
 This option specifies the maximum FDR level to be set for the 
-Benjamini-Hochberg procedure for multiple testing correction.
+Benjamini-Hochberg procedure for multiple testing correction. (Default=0.05)
 
 =item B<--annovardb> I<path_to_annovar_db_directory>
 

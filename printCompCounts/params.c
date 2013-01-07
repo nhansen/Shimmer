@@ -70,3 +70,11 @@ get_params(argc, argv)
         }
     }
 }
+
+void free_params() {
+    free(parameters->fasta);
+    free(parameters->bam1);
+    free(parameters->bam2);
+    free(parameters->region);
+    free(parameters->bedfile);
+}

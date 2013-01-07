@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 #########################################################
 # Author:	Nancy F. Hansen
-# Program:	"SHiMMer"
+# Program:	"Shimmer"
 # Function:	shimmer
 #               Program to use hypothesis testing within
 #               the context of an HMM to predict regions
@@ -136,7 +136,7 @@ else {
     run_shimmer($program_name, $ref_fasta, $bam1, $bam2, $region, $minqual);
 }
 
-## Subroutine to run all of the steps of SHiMMer
+## Subroutine to run all of the steps of Shimmer
 
 sub run_shimmer {
 
@@ -290,7 +290,7 @@ sub print_counts {
         # replace best string, if appropriate:
 
         if ((!$best_string) || ($geno eq $best_geno && $total_norm > $best_cov) || ($best_geno ne 'het' && $geno eq 'het')) {
-            $best_string = "$chr\t$pos\t$ref_base\t$base1\t$normal1_count\t$tumor1_count\t$base2\t$normal2_count\t$tumor2_count\t$geno\n";
+            $best_string = "$chr\t$pos\t$ref_base\t$first_base\t$normal_ref\t$tumor_ref\t$alt_base\t$normal_alt\t$tumor_alt\t$geno\n";
             $best_geno = $geno;
             $best_cov = $total_norm;
         }
@@ -547,12 +547,12 @@ sub write_vcf_file {
     open VCF, ">$vcffile"
         or die "Couldn\'t open $vcffile for writing: $!\n";
 
-    print VCF "##fileformat=VCFv4.0\n";
+    print VCF "##fileformat=VCFv4.1\n";
     my ($sec, $min, $hour, $mday, $mon, $year ) = localtime();
     $mon++;
     $year += 1900;
     printf VCF "##fileDate=%d%02d%02d\n", $year, $mon, $mday;
-    print VCF "##source=SHiMMer\n";
+    print VCF "##source=Shimmer\n";
 
     # include info for RM flag for repeat-masked sequence:
     print VCF "##INFO=<ID=RM,Number=0,Type=Flag,Description=\"Lower-case reference\">\n";
@@ -574,8 +574,10 @@ sub write_vcf_file {
         my $normal_ratio = $norm2_count/$normal_covg;
         my $tumor_ratio = $tumor2_count/$normal_covg;
         my $info_flag = ($ref eq uc $ref) ? '.' : 'RM';
+        my $qual_score = int(-10.0*log($qvalue)/log(10.0));
+        $qual_score = 0 if ($qual_score < 0);
         $ref = uc $ref;
-        print VCF "$chr\t$pos\t$ref\t$allele2\t$pvalue\t.\t$info_flag\tGT:DP\t0/0:$normal_covg\t0/1:$tumor_covg\n";
+        print VCF "$chr\t$pos\t\.\t$ref\t$allele2\t$qual_score\t.\t$info_flag\tGT:DP\t0/0:$normal_covg\t0/1:$tumor_covg\n";
         $index++;
     }
 

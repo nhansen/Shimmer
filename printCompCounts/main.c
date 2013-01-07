@@ -36,7 +36,6 @@ main(int argc, char **argv)
 	long chunkSize;
 	long position;
 	long lastPosition;
-	int totalBases;
 	char *charPtr;
 	char *chrPtr;
 	char cmd[1000000];
@@ -77,7 +76,7 @@ main(int argc, char **argv)
         if (strcmp(parameters->region, "") != 0) {
 		sprintf(tmpcmd, "%s -r %s", &cmd, parameters->region);
 		sprintf(cmd, "%s", &tmpcmd);
-        }
+	}
 
 	if (parameters->mapqual != 0) {
 		sprintf(tmpcmd, "%s -q %i", &cmd, parameters->mapqual);
@@ -261,4 +260,5 @@ main(int argc, char **argv)
  			lastPosition = position;
 		}
 	}
+        free_params();
 }

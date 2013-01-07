@@ -34,3 +34,4 @@ typedef struct params {
 
 } Params;
 
+void free_params();

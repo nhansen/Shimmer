@@ -1,4 +1,0 @@
-Calling printCompCounts -bam1 t/testbam1.bam -bam2 t/testbam2.bam -fasta t/testref.fa -minqual 30
-[bam_header_read] EOF marker is absent. The input is probably truncated.
-[mpileup] 1 samples in 2 input files
-Applying Benjamini-Hochberg correction to somatic change predictions with 3 tests.  Results in /home/nhansen/projects/github/Shimmer/t/testout/som_counts.bh.txt.

@@ -4,5 +4,6 @@ umdhmm-v1.02-gauss/
 *.tar.gz
 _build/
 t/testout/
+t/calltest.out
 blib/
 Build

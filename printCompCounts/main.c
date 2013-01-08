@@ -260,5 +260,5 @@ main(int argc, char **argv)
  			lastPosition = position;
 		}
 	}
-        free_params();
+        /* free_params(); */
 }

@@ -46,6 +46,7 @@ def create_mut(mutations,ar,percent):
 	mutseq = '' #mutated sequence
 	hardclips=[]
 
+	readname = ar.qname
 	if ar.cigar is None:
 		return ar
 	
@@ -72,7 +73,8 @@ def create_mut(mutations,ar,percent):
 		if nuc[0] in mutations:
 			if random.random()<=percent: #mutate with a given probability
 				mut=mutations[nuc[0]]
-				
+				#print 'Mutating read '+readname+' with mutation '+mut
+
 				if re.match('\w+>\w+',mut): #if it's a SNP
 					mutseq+=mut[2] #mutate the base
 				elif re.match('ins\w+',mut): #if it's an insertion
@@ -121,6 +123,7 @@ def create_mut(mutations,ar,percent):
 	nr.cigar=cig
 	nr.seq=mutseq
 	nr.qual=tempq
+
 	return nr
 
 #origbam: original file to mutate from
@@ -133,21 +136,28 @@ def mutate_sample(origbam,cosmic,frac,outbam):
 	percent = float(frac)/2
 	mutations = parse_mutations(cosmic) #dictionary {chr#: {..., pos:'B>B',...}, ...}
 	orig = pysam.Samfile(origbam,'rb')
-	tumor = pysam.Samfile(outbam+'.sim'+frac+'.bam','wb',template=orig)
+	tumor = pysam.Samfile(outbam,'wb',template=orig)
 
 	# set of alignedReads that need to be checked to mutate
 	toCheck = set([])
 	for chr in mutations.iterkeys():
 		for pos in mutations[chr].iterkeys():
 			for ar in orig.fetch(chr,pos-1,pos):
+				samref = pysam.Samfile.getrname(orig,ar.tid)
+				if not samref == chr:
+					readname = ar.qname
+					print readname+"is not really on chr"+chr+"!\n"
 				toCheck.add(ar.qname)
 
 	#fetch all the reads
 	for ar in orig.fetch():
 		if ar.qname in toCheck: #if read spans a mutation position, mutate it with input probability
 			ref=pysam.Samfile.getrname(orig,ar.tid)
-			nr=create_mut(mutations[ref],ar,percent)
-			tumor.write(nr)
+			if ref in mutations.iterkeys():
+				nr=create_mut(mutations[ref],ar,percent)
+				tumor.write(nr)
+			else:
+				tumor.write(ar)
 		else:
 			tumor.write(ar)
 	
@@ -155,5 +165,83 @@ def mutate_sample(origbam,cosmic,frac,outbam):
 	orig.close()
 
 if __name__ == "__main__":
-	import sys
-	mutate_sample(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4])
+	import sys,os,re
+
+	bam1=sys.argv[1]
+	bam2=sys.argv[2]
+	cosmicfile=sys.argv[3]
+
+	# will make six directories:
+	topdir=sys.argv[4]
+	if re.split('.+/', topdir)[-1] != '':
+		topdir = topdir + '/'
+
+	nt100dir = topdir+'nt100/'
+	try:
+		os.makedirs(nt100dir)
+		print 'Creating directory '+nt100dir
+	except:
+		print nt100dir+" already exists!\n"
+
+	mutate_sample(bam2, cosmicfile, 1.0, nt100dir+'tumor.bam')
+	os.system('samtools index '+nt100dir+'tumor.bam')
+	os.symlink(bam1, nt100dir+'normal.bam')
+	os.symlink(bam1+'.bai', nt100dir+'normal.bam.bai')
+
+	nt60dir = topdir+'nt60/'
+	try:
+		os.makedirs(nt60dir)
+		print 'Creating directory '+nt60dir
+	except:
+		print nt60dir+" already exists!\n"
+	mutate_sample(bam2, cosmicfile, 0.6, nt60dir+'tumor.bam')
+	os.system('samtools index '+nt60dir+'tumor.bam')
+	os.symlink(bam1, nt60dir+'normal.bam')
+	os.symlink(bam1+'.bai', nt60dir+'normal.bam.bai')
+
+	nt20dir = topdir+'nt20/'
+	try:
+		os.makedirs(nt20dir)
+		print 'Creating directory '+nt20dir
+	except:
+		print nt20dir+" already exists!\n"
+	mutate_sample(bam2, cosmicfile, 0.2, nt20dir+'tumor.bam')
+	os.system('samtools index '+nt20dir+'tumor.bam')
+	os.symlink(bam1, nt20dir+'normal.bam')
+	os.symlink(bam1+'.bai', nt20dir+'normal.bam.bai')
+
+	tn100dir = topdir+'tn100/'
+	try:
+		os.makedirs(tn100dir)
+		print 'Creating directory '+tn100dir
+	except:
+		print tn100dir+" already exists!\n"
+
+	mutate_sample(bam1, cosmicfile, 1.0, tn100dir+'tumor.bam')
+	os.system('samtools index '+tn100dir+'tumor.bam')
+	os.symlink(bam2, tn100dir+'normal.bam')
+	os.symlink(bam2+'.bai', tn100dir+'normal.bam.bai')
+
+	tn60dir = topdir+'tn60/'
+	try:
+		os.makedirs(tn60dir)
+		print 'Creating directory '+tn60dir
+	except:
+		print tn60dir+" already exists!\n"
+
+	mutate_sample(bam1, cosmicfile, 0.6, tn60dir+'tumor.bam')
+	os.system('samtools index '+tn60dir+'tumor.bam')
+	os.symlink(bam2, tn60dir+'normal.bam')
+	os.symlink(bam2+'.bai', tn60dir+'normal.bam.bai')
+	
+	tn20dir = topdir+'tn20/'
+	try:
+		os.makedirs(tn20dir)
+		print 'Creating directory '+tn20dir
+	except:
+		print tn20dir+" already exists!\n"
+	mutate_sample(bam1, cosmicfile, 0.2, tn20dir+'tumor.bam')
+	os.system('samtools index '+tn20dir+'tumor.bam')
+	os.symlink(bam2, tn20dir+'normal.bam')
+	os.symlink(bam2+'.bai', tn20dir+'normal.bam.bai')
+

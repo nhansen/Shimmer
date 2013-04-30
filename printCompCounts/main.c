@@ -23,6 +23,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <zlib.h>
 #include "printcomp.h"
 
@@ -36,6 +38,8 @@ main(int argc, char **argv)
 	long chunkSize;
 	long position;
 	long lastPosition;
+	int totalBases1;
+	int totalBases2;
 	char *charPtr;
 	char *chrPtr;
 	char cmd[1000000];
@@ -46,7 +50,14 @@ main(int argc, char **argv)
         char refBase;
         int fieldNo;
 	int noBases[10];
+	int noIndelAlleles;
+	int firstIndelChar;
+	char thisIndelAllele[1000];
+	char *indelAlleleStrings[100000];
+	int indelCount1[100000];
+	int indelCount2[100000];
 	int indelLength;
+	int indelNoDigits;
 	int posLength;
 	int refID; /* store current reference base as an integer */
 	int sampleShift;
@@ -78,6 +89,11 @@ main(int argc, char **argv)
 		sprintf(cmd, "%s", &tmpcmd);
 	}
 
+        if (strcmp(parameters->bedfile, "") != 0) {
+                sprintf(tmpcmd, "%s -l %s", &cmd, parameters->bedfile);
+                sprintf(cmd, "%s", &tmpcmd);
+        }
+
 	if (parameters->mapqual != 0) {
 		sprintf(tmpcmd, "%s -q %i", &cmd, parameters->mapqual);
 		sprintf(cmd, "%s", &tmpcmd);
@@ -100,7 +116,10 @@ main(int argc, char **argv)
 	noBases[7] = 0;
 	noBases[8] = 0;
 	noBases[9] = 0;
+	totalBases1 = 0;
+	totalBases2 = 0;
 	baseLength = 0;
+	noIndelAlleles = 0;
 	while((nextChar = fgetc( fil )) != EOF) {
 		if (nextChar == '\t') {
 			fieldNo++;
@@ -174,22 +193,60 @@ main(int argc, char **argv)
 				}
 				else if ((posBases[i] == '+') ||
 						(posBases[i] == '-')) { /* indel */
+					firstIndelChar = i;
 					indelLength = atoi(&posBases[++i]);
 					i += indelLength;
-					/* for (j=0; j<indelLength; j++) {
-						putchar(posBases[++i]);
-					} */
+					indelNoDigits = 1;
 					while (indelLength/10 > 0) {
 						indelLength /= 10;
 						i++;
+						indelNoDigits++;
 					}
-					/* printf("\n"); */
+					/* store this allele */
+					for (j=0; j<i-firstIndelChar+1; j++) {
+						if (j>indelNoDigits) {
+							thisIndelAllele[j] = toupper(posBases[j+firstIndelChar]); /* print the allele in uppercase */
+						}
+						else {
+							thisIndelAllele[j] = posBases[j+firstIndelChar];
+						}
+					}
+					thisIndelAllele[j] = '\0';
+					/* have we seen this indelAllele before at this position? */
+					for (j=0; j<noIndelAlleles; j++) {
+						if (strcmp(indelAlleleStrings[j], thisIndelAllele)==0) {
+							break;
+						}
+					}
+					if (j>=noIndelAlleles) {
+						indelAlleleStrings[noIndelAlleles] = (char *)malloc(sizeof(char)*(strlen(thisIndelAllele) + 1));
+						for (j=0; j<strlen(thisIndelAllele)+1; j++) {
+							indelAlleleStrings[noIndelAlleles][j] = thisIndelAllele[j];
+						}
+						indelCount1[noIndelAlleles] = 0;
+						indelCount2[noIndelAlleles] = 0;
+						noIndelAlleles++;
+					}
+					if (sampleShift == 0) {
+						indelCount1[j]++;
+					}
+					else {
+						indelCount2[j]++;
+					}
+					/* printf("Indel string %s\n", thisIndelAllele); */
+
 				}
 				else if (posBases[i] == '*') { /* placeholder */
 				}
 				else { /* a base */
 					baseQual = fgetc( fil );
 					baseQualNo = baseQual - '!';
+					if (sampleShift == 0) {
+						totalBases1++;
+					}
+					else {
+						totalBases2++;
+					}
 					/* printf("New base qual %c score %i\n", baseQual, baseQualNo); */
 
                                         /* can calculate map quality of read from stacked quals here (stored cyclically?) */
@@ -240,12 +297,12 @@ main(int argc, char **argv)
 					nextMaxBases = baseCount;
 				}
 			}
-			/* if ((nextMaxBases > 1) || (position < lastPosition) ||  */
-                                   /* (position - lastPosition > 1000)) {  */
-                                   /* want to print for testing */
-				printf("%s\t%ld\t%c\t%c\t%i\t%i\t%c\t%i\t%i\n", chromosome, position, refBase, baseArray[maxBase], noBases[maxBase], 
-					noBases[maxBase+sampleShift], baseArray[nextMaxBase], noBases[nextMaxBase], noBases[nextMaxBase+sampleShift]);
-			/* } */
+			printf("%s\t%ld\t%c\t%c\t%i\t%i\t%c\t%i\t%i\n", chromosome, position, refBase, baseArray[maxBase], noBases[maxBase], noBases[maxBase+sampleShift], baseArray[nextMaxBase], noBases[nextMaxBase], noBases[nextMaxBase+sampleShift]);
+
+			for (j=0; j<noIndelAlleles; j++) {
+				printf("#Indels\t%s\t%ld\t%c\t%i\t%i\t%s\t%i\t%i\n", chromosome, position, refBase, totalBases1, totalBases2, indelAlleleStrings[j], indelCount1[j], indelCount2[j]);
+			}
+
 			fieldNo=0;
 			noBases[0] = 0;
 			noBases[1] = 0;
@@ -257,8 +314,15 @@ main(int argc, char **argv)
 			noBases[7] = 0;
 			noBases[8] = 0;
 			noBases[9] = 0;
+			indelCount1[0] = 0;
+			indelCount2[0] = 0;
+			totalBases1 = 0;
+			totalBases2 = 0;
+			for (j=0; j<noIndelAlleles; j++) {
+				free(indelAlleleStrings[j]);
+			}
+			noIndelAlleles = 0;
  			lastPosition = position;
 		}
 	}
-        /* free_params(); */
 }

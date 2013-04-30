@@ -3,12 +3,8 @@
 # Author:	Nancy F. Hansen
 # Program:	"Shimmer"
 # Function:	shimmer
-#               Program to use hypothesis testing within
-#               the context of an HMM to predict regions
-#               of copy number alteration in tumor
-#               sequence data (by comparing to a matched
-#               normal sample's sequence.)  SHiMMer also
-#               predicts single-nucleotide somatic
+#               Program to use hypothesis testing to 
+#               predict single-nucleotide somatic
 #               mutations using Fisher's Exact Test with
 #               multiple testing correction.
 ##########################################################
@@ -47,9 +43,6 @@ $short_program_name =~ s:.*/::; # without path
 my $Usage = "Usage: $short_program_name <--region chr1:1000-2000> <--ref reference fasta> <bam file from normal sample> <bam file from mutated sample>\nFor more information, type \"perldoc $short_program_name\".";
 
 my $printcounts_exe = "printCompCounts";
-my $baumwelch_exe = "sh.run_esthmm";
-my $viterbi_exe = "sh.run_viterbi";
-my $hmm_model = "c/umdhmm-v1.02-gauss/default_ng_model.hmm";
 
 process_commandline();
 
@@ -62,6 +55,7 @@ my $ref_fasta = $Opt{'ref'};
 my $region = $Opt{'region'};
 my $minqual = $Opt{'minqual'}; # disregard any base with quality lower than minqual
 my $mapqual = $Opt{'mapqual'}; # disregard any read with mapping quality lower than mapqual
+my $min_indel_reads = $Opt{'minindel'}; # disregard any indel without this total number of reads' coverage (in both samples)
 
 if ($Opt{'counts'}) {
 
@@ -73,11 +67,14 @@ if ($Opt{'counts'}) {
     }
     my $som_file = $Opt{'som_file'};
     my $het_file = $Opt{'het_file'};
+    my $indel_file = $Opt{'indel_file'};
 
-    # print counts of different alleles at all interesting positions
-    print_counts($ref_fasta, $bam1, $bam2, $region, $minqual, $mapqual, $som_file, $het_file, $printcounts_exe);
+    if (!$som_file || !$het_file || !(-e $som_file) || !(-e $het_file)) { # need to generate count files
+        # print counts of different alleles at all interesting positions
+        print_counts($ref_fasta, $bam1, $bam2, $region, $minqual, $mapqual, $som_file, $het_file, $indel_file, $printcounts_exe);
+    }
     # test counts for significance with Fisher's exact test (without mult testing corr)
-    test_counts($som_file, $het_file);
+    test_counts($som_file, $het_file, $indel_file);
 }
 elsif ($Opt{'bh'}) {
 
@@ -100,26 +97,6 @@ elsif ($Opt{'annotate'}) {
     my $ann_vs_file = $Opt{'outfile'};
     my $buildver = $Opt{'buildver'};
     annotate_variants($annovar_db, $buildver, $vs_file, $ann_vs_file);
-}
-elsif ($Opt{'symbols'}) {
-
-    my $input_file = $Opt{'input'}
-        or die "Must specify file of counts with --input option when running $0 --symbols\n";
-
-    my $output_file = $Opt{'outfile'}
-        or die "Must specify output file with --outfile option when running $0 --symbols\n";
-
-    my $outdir = $Opt{'outdir'}
-        or die "Must specify output directory with --outdir option when running $0 --symbols\n";
-
-    my $max_q = $Opt{'max_q'};
-
-    my $ra_symbols = write_symbols($input_file, $output_file, $outdir, $max_q, $baumwelch_exe, $viterbi_exe, $hmm_model);
-
-    my $plot = $Opt{'plots'};
-    if ($plot) {
-        plot_symbols($ra_symbols, $outdir);
-    }
 }
 elsif ($Opt{'covg'}) {
 
@@ -160,10 +137,12 @@ sub run_shimmer {
     }
    
     if ((!$Opt{'som_file'}) || (!$Opt{'het_file'})) { 
-        my $command = "$shimmer --counts --ref $ref_fasta $bam1 $bam2 --min_som_reads $Opt{min_som_reads} --som_file $tmpdir/som_counts.txt --het_file $tmpdir/het_counts.txt";
+        my $command = "$shimmer --counts --ref $ref_fasta $bam1 $bam2 --min_som_reads $Opt{min_som_reads} --som_file $tmpdir/som_counts.txt --het_file $tmpdir/het_counts.txt --indel_file $tmpdir/indel_counts.txt";
         $command .= " --region $region" if ($region);
         $command .= " --minqual $minqual" if ($minqual);
         $command .= " --mapqual $mapqual" if ($mapqual);
+        $command .= " --minindel $min_indel_reads" if ($min_indel_reads);
+        $command .= " --testall" if ($Opt{'testall'});
         system($command) == 0
             or die "Failed to run $shimmer --counts!\n";
     }
@@ -174,32 +153,30 @@ sub run_shimmer {
             or die "Couldn\'t open $tmpdir/som_counts.fof for writing: $!\n";
         print SOMFOF "$tmpdir/som_counts.tests.txt\n";
         close SOMFOF;
-        
-        (system("$shimmer --max_q $max_q --test_fof $tmpdir/som_counts.fof --bh --vs_file $tmpdir/somatic_diffs.vs --vcf_file $tmpdir/somatic_diffs.vcf --outfile $tmpdir/som_counts.bh.txt $bam1 $bam2") == 0)
-            or die "Failed to run $shimmer --test_fof $tmpdir/som_counts.fof --bh --vs_file $tmpdir/somatic_diffs.vs --outfile $tmpdir/som_counts.bh.txt $bam1 $bam2!\n";
-    
+
+        my $command = "$shimmer --max_q $max_q --test_fof $tmpdir/som_counts.fof --bh --vs_file $tmpdir/somatic_diffs.vs --vcf_file $tmpdir/somatic_diffs.vcf --outfile $tmpdir/som_counts.bh.txt $bam1 $bam2";
+        $command .= " --testall" if ($Opt{'testall'});
+        print "$command\n";
+        (system("$command") == 0)
+            or die "Failed to run $command!\n";
+
+        open INDELFOF, ">$tmpdir/indel_counts.fof"
+            or die "Couldn\'t open $tmpdir/indel_counts.fof for writing: $!\n";
+        print INDELFOF "$tmpdir/indel_counts.tests.txt\n";
+        close INDELFOF;
+
+        (system("$shimmer --max_q $max_q --test_fof $tmpdir/indel_counts.fof --bh --vs_file $tmpdir/somatic_indels.vs --outfile $tmpdir/indel_counts.bh.txt $bam1 $bam2") == 0)
+            or die "Failed to run $shimmer --test_fof $tmpdir/indel_counts.fof!\n";
+
         if ($Opt{'annovardb'}) {
             my $annovardb = $Opt{'annovardb'};
             my $buildver = $Opt{'buildver'};
             (system("$shimmer --annotate --buildver $buildver --annovardb $annovardb --annovar $ANNOVAR_EXE --vs_file $tmpdir/somatic_diffs.vs --outfile $tmpdir/somatic_diffs.ANN.vs $bam1 $bam2")==0)
                 or die "Failed to run $shimmer --annotate --buildver $buildver --annovardb $annovardb --annovar $ANNOVAR_EXE --vs_file $tmpdir/somatic_diffs.vs --outfile $tmpdir/somatic_diffs.ANN.vs $bam1 $bam2: $!\n";
+            (system("$shimmer --annotate --buildver $buildver --annovardb $annovardb --annovar $ANNOVAR_EXE --vs_file $tmpdir/somatic_indels.vs --outfile $tmpdir/somatic_indels.ANN.vs $bam1 $bam2")==0)
+                or die "Failed to run $shimmer --annotate --buildver $buildver --annovardb $annovardb --annovar $ANNOVAR_EXE --vs_file $tmpdir/somatic_indels.vs --outfile $tmpdir/somatic_indels.ANN.vs $bam1 $bam2: $!\n";
         }
 
-        if (!$Opt{'skip_cna'}) {    
-            open HETFOF, ">$tmpdir/het_counts.fof"
-                or die "Couldn\'t open $tmpdir/het_counts.fof for writing: $!\n";
-            print HETFOF "$tmpdir/het_counts.tests.txt\n";
-            close HETFOF;
-            
-            (system("$shimmer --max_q 0 --test_fof $tmpdir/het_counts.fof --bh --outfile $tmpdir/het_counts.bh.txt $bam1 $bam2") == 0)
-                or die "Failed to run $shimmer --test_fof $tmpdir/het_counts.fof!\n";
-        
-            my $run_string = "$shimmer --max_q 0.05 --symbols --input $tmpdir/het_counts.bh.txt --outfile $tmpdir/cnv.symbols.txt --outdir $tmpdir $bam1 $bam2";
-            $run_string .= " --plots" if ($Opt{'plots'});
-
-            system("$run_string") == 0
-                or die "Couldn\'t run $run_string\n";
-        }
     }
 
     if ($Opt{'power'}) {
@@ -221,6 +198,7 @@ sub print_counts {
     my $mapqual = shift;
     my $som_file = shift;
     my $het_file = shift;
+    my $indel_file = shift;
     my $printcounts_exe = shift;
 
     my $insert = $Opt{'insert'};
@@ -242,6 +220,9 @@ sub print_counts {
     open SOM, ">$som_file"
         or die "Couldn\'t open $som_file for writing: $!\n";
 
+    open INDELS, ">$indel_file"
+        or die "Couldn\'t open $indel_file for writing: $!\n";
+
     open CNV, ">$het_file"
         or die "Couldn\'t open $het_file for writing: $!\n";
 
@@ -249,6 +230,16 @@ sub print_counts {
 
     while (<COUNTS>) {
         chomp;
+        if (/^#Indels/) {
+            my ($indel, $chr, $pos, $ref, $total1, $total2, $indel_string, $indel1, $indel2) = split /\t/, $_;
+            my $nonindel1 = $total1 - $indel1;
+            my $nonindel2 = $total2 - $indel2;
+            next if ($nonindel1 < 0 || $nonindel2 < 0); # skip ugly regions for now
+            if (($total1 >= $min_indel_reads) && ($indel1 + $indel2 >= $min_indel_reads)) {
+                print INDELS "$indel\t$chr\t$pos\t$ref\t$nonindel1\t$nonindel2\t$indel_string\t$indel1\t$indel2\tNA\n";
+            }
+            next;
+        }
         my ($chr, $pos, $ref_base, $base1, $normal1_count, $tumor1_count, $base2, $normal2_count, $tumor2_count) = split /\t/, $_;
         $ref_base = uc $ref_base;
         my $total_norm = $normal1_count + $normal2_count;
@@ -302,11 +293,11 @@ sub print_counts {
     close COUNTS;
     close CNV;
     close SOM;
+    close INDELS;
 
 }
 
 sub read_min_max_data {
-    my $file = shift;
     my $ra_min_max = [];
 
     while (<DATA>) {
@@ -354,9 +345,13 @@ sub test_counts {
     # test counts for significance with Fisher's exact test (without mult testing corr)
     my $som_file = shift;
     my $het_file = shift;
+    my $indel_file = shift;
 
-    foreach my $file ($som_file, $het_file) {
-        my $type = ($file eq $som_file) ? 'som' : 'het';
+    my $test_opt = ($Opt{'testall'}) ? 'all' : 'hom';
+
+    foreach my $file ($som_file, $het_file, $indel_file) {
+        my $type = ($file eq $som_file) ? 'som' :
+                   ($file eq $het_file) ? 'het' : 'indel';
 
         my $r_command_file = "$file.r";
     
@@ -375,7 +370,7 @@ while (length(input <- readLines(con, n=1000)) > 0) {
         allele_counts <- as.numeric(allele_counts);
         geno <- linevec[[1]][[10]];
         dim(allele_counts) <- c(2,2);
-        if ((("$type" == "som") && (geno == "hom")) || (("$type" == "het") && (geno == "het"))) {
+        if ((("$type" == "som") && (geno == "hom")) || (("$type"=="som") && ("$test_opt"=="all")) || (("$type" == "het") && (geno == "het")) || ("$type" == "indel")) {
             exact_result <- fisher.test(allele_counts);
             pvalue <- exact_result["p.value"];
             output <- paste(linevec[[1]][[1]], linevec[[1]][[2]], linevec[[1]][[3]], linevec[[1]][[4]], linevec[[1]][[5]], linevec[[1]][[6]], linevec[[1]][[7]], linevec[[1]][[8]], linevec[[1]][[9]], linevec[[1]][[10]], pvalue, sep=":");
@@ -452,7 +447,7 @@ sub bh_correct_tests {
             my @fields = split /\s/, $line;
             my $geno = $fields[$#fields - 1];
             my $pvalue = $fields[$#fields];
-            $no_tests++ if (($pvalue ne 'NA') || ($geno eq 'und'));;
+            $no_tests++ if (($pvalue ne 'NA') || ($geno eq 'und') || ($Opt{'acctests'}));
             if (($pvalue ne 'NA') && ((!$max_q) || ($pvalue <= $max_q))) {
                 push @pvalues, {'pvalue' => $pvalue, 'line_index' => $line_index};
             }
@@ -510,6 +505,8 @@ sub write_vs_file {
     my $outfile = shift;
     my $vsfile = shift;
 
+    my $indel_flag = ($vsfile =~ /somatic_indels/) ? 1 : 0;
+
     open SOM, "$outfile"
         or die "Couldn\'t open $outfile for reading: $!\n";
 
@@ -520,16 +517,35 @@ sub write_vs_file {
     my $index = 1;
     while (<SOM>) {
         chomp;
-        my ($chr, $pos, $ref, $allele1, $norm1_count, $tumor1_count, $allele2, $norm2_count, $tumor2_count, $gen, $pvalue, $qvalue) = split /\t/, $_;
-        $ref = uc $ref;
-        my $normal_covg = $norm1_count + $norm2_count;
-        my $tumor_covg = $tumor1_count + $tumor2_count;
-        my $normal_ratio = $norm2_count/$normal_covg;
-        my $tumor_ratio = $tumor2_count/$tumor_covg;
-        my $lfe = $pos - 1;
-        my $rfs = $pos + 1;
-        print VS "$index\t$chr\t$lfe\t$rfs\t$ref\t$allele2\tSNP\t$normal_covg\t$tumor_covg\t$normal_ratio\t$tumor_ratio\t$qvalue\n";
-        $index++;
+        if (!$indel_flag) {
+            my ($chr, $pos, $ref, $allele1, $norm1_count, $tumor1_count, $allele2, $norm2_count, $tumor2_count, $gen, $pvalue, $qvalue) = split /\t/, $_;
+            $ref = uc $ref;
+            my $normal_covg = $norm1_count + $norm2_count;
+            my $tumor_covg = $tumor1_count + $tumor2_count;
+            my $normal_ratio = $norm2_count/$normal_covg;
+            my $tumor_ratio = $tumor2_count/$tumor_covg;
+            my $lfe = $pos - 1;
+            my $rfs = $pos + 1;
+            print VS "$index\t$chr\t$lfe\t$rfs\t$ref\t$allele2\tSNP\t$normal_covg\t$tumor_covg\t$normal_ratio\t$tumor_ratio\t$qvalue\n";
+            $index++;
+        }
+        else { # indel file has different format
+            my ($indels, $chr, $pos, $ref, $normref_count, $tumorref_count, $indel_string, $normdiv_count, $tumordiv_count, $dummy, $pvalue, $qvalue) = split /\t/, $_;
+            my $indel_type = ($indel_string =~ /^\+/) ? 'ins' : 'del';
+            $indel_string =~ s/^[+-]\d+//;
+            my $indel_length = length($indel_string);
+            #my $lfe = ($indel_type eq 'ins') ? $pos : $pos - 1;
+            my $lfe = $pos;
+            my $rfs = ($indel_type eq 'ins') ? $pos + 1 : $pos + $indel_length + 1;
+            my $alt_string = ($indel_type =~ 'del') ? '*' : $indel_string;
+            my $ref_string = ($indel_type =~ 'del') ? $indel_string : '*';
+            my $normal_covg = $normref_count + $normdiv_count;
+            my $tumor_covg = $tumorref_count + $tumordiv_count;
+            my $normal_ratio = $normdiv_count/$normal_covg;
+            my $tumor_ratio = $tumordiv_count/$tumor_covg;
+            print VS "$index\t$chr\t$lfe\t$rfs\t$ref_string\t$alt_string\tINDEL\t$normal_covg\t$tumor_covg\t$normal_ratio\t$tumor_ratio\t$qvalue\n";
+            $index++;
+        }
     }
 
     close SOM;
@@ -555,7 +571,7 @@ sub write_vcf_file {
     print VCF "##source=Shimmer\n";
 
     # include info for RM flag for repeat-masked sequence:
-    print VCF "##INFO=<ID=RM,Number=0,Type=Flag,Description=\"Lower-case reference\">\n";
+    print VCF "##INFO=<ID=RM,Number=0,Type=Flag,Description=\"Lower-case reference (probably masked for repeat)\">\n";
 
     # included genotype id's:
     print VCF "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n";
@@ -574,7 +590,7 @@ sub write_vcf_file {
         my $normal_ratio = $norm2_count/$normal_covg;
         my $tumor_ratio = $tumor2_count/$normal_covg;
         my $info_flag = ($ref eq uc $ref) ? '.' : 'RM';
-        my $qual_score = int(-10.0*log($qvalue)/log(10.0));
+        my $qual_score = ($qvalue == 0) ? 999 : int(-10.0*log($qvalue)/log(10.0));
         $qual_score = 0 if ($qual_score < 0);
         $ref = uc $ref;
         print VCF "$chr\t$pos\t\.\t$ref\t$allele2\t$qual_score\t.\t$info_flag\tGT:DP\t0/0:$normal_covg\t0/1:$tumor_covg\n";
@@ -602,10 +618,26 @@ sub annotate_variants {
 
     while (<VS>) {
         chomp;
-        my ($index, $chr, $lfe, $rfs, $ref, $var, $rest) = split /\t/, $_;
+        my ($index, $chr, $lfe, $rfs, $ref, $var, $muttype, $rest) = split /\t/, $_;
         next if ($index eq 'Index');
         my $pos = $lfe + 1;
-        print ANV "$chr\t$pos\t$pos\t$ref\t$var\t$index\n";
+        if ($muttype eq 'SNP') {
+            print ANV "$chr\t$pos\t$pos\t$ref\t$var\t$index\n";
+        }
+        elsif ($muttype eq 'INDEL') {
+            $ref =~ s/\*/\-/;
+            $var =~ s/\*/\-/;
+            my ($left, $right);
+            if ($ref eq '-' && ($lfe == $rfs - 1)) {
+                $left = $lfe + 1;
+                $right = $left;
+            }
+            else {
+                $left = $lfe + 1;
+                $right = $rfs - 1;
+            }
+            print ANV "$chr\t$left\t$right\t$ref\t$var\t$index\n";
+        }
     }
 
     close ANV; 
@@ -670,114 +702,6 @@ sub annotate_variants {
     close VS;
 
 } ## end annotate_variants 
-
-sub write_symbols {
-    my $input_file = shift; 
-    my $output_file = shift; 
-    my $outdir = shift;
-    my $max_q = shift;
-    my $bw_exe = shift;
-    my $viterbi_exe = shift;
-    my $hmm_model = shift;
-
-    my $depth_normalization = calculate_depth_norm($input_file);
-    open DIFFS, $input_file
-        or die "Couldn\'t open $input_file: $!\n";
-
-    my @symbols = ();
-    my $symbol_string = '';
-    my $gauss_string = '';
-    my $no_symbols = 0;
-    my $no_homs = 0;
-    while (<DIFFS>) {
-        chomp;
-        my @fields = split /\t/, $_;
-        my $no_fields = @fields;
-        if ($no_fields == 12) {
-            my $chr = $fields[0];
-            my $pos = $fields[1];
-            my $normal_a = $fields[4];
-            my $tumor_a = $fields[5];
-            my $normal_b = $fields[7];
-            my $tumor_b = $fields[8];
-            my $geno = $fields[9];
-            my $pvalue = $fields[10];
-            my $qvalue = $fields[11];
-            next if (!($normal_a + $normal_b)); # need some normal reads!
-            my $trr = ($tumor_a + $tumor_b)/($normal_a + $normal_b) * $depth_normalization;
-            next if (($Opt{'gauss'}) && ($trr == 0));
-            my $logtrr = log($trr) if ($Opt{'gauss'});
-            my $sig = (($geno eq 'hom') || ($qvalue > $max_q)) ? 'I' : 'S';
-
-            my $trr_index = ($trr < 0.7) ? 0 : ($trr < 1.3) ? 1 : ($trr < 1.7) ? 2 : 3;
-            my $geno_index = ($geno eq 'hom') ? 1 : ($sig eq 'I') ? 2 : 3;
-            my $symbol_number = ($Opt{'gauss'}) ? $geno_index : 3*$trr_index + $geno_index;
-            $symbol_string .= "$symbol_number ";
-            if ($Opt{'gauss'}) { # generate Gaussian emission string, track hom ratio
-                $gauss_string .= "$trr ";
-                $no_homs++ if ($geno_index == 1);
-            }
-            push @symbols, {'chr' => $chr, 'pos' => $pos, 'geno' => $geno, 'sig' => $sig, 'trr' => $trr };
-            $no_symbols++;
-        }
-    }
-    open SYMB, ">$output_file"
-        or die "Couldn\'t open $output_file for writing: $!\n";
-    print SYMB "T=$no_symbols\n$symbol_string\n";
-    print SYMB "$gauss_string\n" if ($Opt{'gauss'});
-    close SYMB;
-    close DIFFS;
-
-    # run baum-welch
-    my $inithmm = "$outdir/initialhmm.hmm";
-    my $outhmm = "$outdir/trainedhmm.hmm";
-    if ($Opt{'gauss'}) {
-        my $perc_hom = $no_homs/$no_symbols;
-        my $neut_in = (1 - $perc_hom)*0.99;
-        my $neut_sig = (1 - $perc_hom)*0.01;
-        my $alt_in = (1 - $perc_hom)*0.8;
-        my $alt_sig = (1 - $perc_hom)*0.2;
-        open INIT, ">$inithmm"
-            or die "Couldn\'t open $inithmm for writing: $!\n";
-        print INIT "M= 3\nN= 4\nA:\n0.9999997 0.0000001 0.0000001 0.0000001\n0.0000001 0.9999997 0.0000001 0.0000001\n0.0000001 0.0000001 0.9999997 0.0000001\n0.0000001 0.0000001 0.0000001 0.9999997\nB:\n$perc_hom $alt_in $alt_sig\n$perc_hom $neut_in $neut_sig\n$perc_hom $alt_in $alt_sig\n$perc_hom $alt_in $alt_sig\nGB:\n0.6 0.2\n0.9 0.2\n0.9 0.2\n1.3 0.2\npi:\n0.001 0.997 0.001 0.001\n";
-        close INIT;
-        system("$bw_exe $inithmm $output_file > $outhmm");
-    }
-
-    # run viterbi here
-    if ($Opt{'gauss'}) {
-        $hmm_model = $outhmm;
-    }
-
-    my $outstatefile = ($Opt{'gauss'}) ? "$outdir/cnv.gaussstates.txt" : "$outdir/cnv.states.txt";
-    my $gaussstring = ($Opt{'gauss'}) ? '-g' : '';
-    system("$viterbi_exe $hmm_model $output_file $gaussstring > $outstatefile")
-        or die "Couldn\'t run $viterbi_exe on $output_file with model $hmm_model.\n";
-
-    # store predicted states in @symbols:
-    open STATES, "$outstatefile"
-        or die "Couldn\'t read $outstatefile: $!\n";
-    while (<STATES>) {
-        next if (!/log probabilities/);
-        for (my $i=1; $i<=4; $i++) {
-            $_ = <STATES>;
-        }
-        chomp;
-        my @states = split /\s/, $_;
-        my $no_states = @states;
-        my $no_symbols = @symbols;
-        if ($no_states != $no_symbols) {
-            die "Failure in Viterbi algorithm--wrong number of states.\n";
-        }
-        for (my $i=0; $i<=$#symbols; $i++) {
-            $symbols[$i]->{'state'} = $states[$i];
-        }
-    }
-    close STATES;
-    
-    return [@symbols];
-
-} # end write_symbols
 
 sub calc_power_file {
     my $input_file = shift;
@@ -944,114 +868,19 @@ sub calculate_depth_norm {
 
 } # end calculate_depth_norm
 
-sub plot_symbols {
-    my $ra_symbols = shift;
-    my $tmpdir = shift;
-
-    my $ylow = 0.0;
-    my $yhigh = 3.2;
-    my $stateline = 3.0;
-
-    # write files of points to plot
-
-    my @all_chrs = ();
-    my $last_chr;
-    for (my $i=0; $i<=$#{$ra_symbols}; $i++) {
-        my $rh_symbol = $ra_symbols->[$i];
-        my $chr = $rh_symbol->{'chr'};
-        my $symbol_file = ($Opt{'gauss'}) ? "$tmpdir/$chr.gausssymbols.txt" : "$tmpdir/$chr.symbols.txt";
-        if (!$last_chr) {
-            open POINTS, ">$symbol_file"
-                or die "Unable to open $symbol_file for writing: $!\n";
-            push @all_chrs, $chr;
-        }
-        elsif (($last_chr) && ($chr ne $last_chr)) {
-            close POINTS;
-            open POINTS, ">$symbol_file"
-                or die "Unable to open $symbol_file for writing: $!\n";
-            push @all_chrs, $chr;
-        }
-        my $pos = $rh_symbol->{'pos'};
-        my $trr = $rh_symbol->{'trr'};
-        my $geno = $rh_symbol->{'geno'};
-        my $sig = $rh_symbol->{'sig'};
-        my $state = $rh_symbol->{'state'};
-        print POINTS "$pos\t$trr\t$geno\t$sig\t$state\n";
-        $last_chr = $chr;
-    }
-    close POINTS;
-
-    # now plot:
-    foreach my $chr (@all_chrs) {
-        # first colored plots of coverage, genotype, significance:
-        my $r_cmd_file = ($Opt{'gauss'}) ? "$tmpdir/$chr.gausssymbols.r" : "$tmpdir/$chr.plot.r";
-        my $symbol_file = ($Opt{'gauss'}) ? "$tmpdir/$chr.gausssymbols.txt" : "$tmpdir/$chr.symbols.txt";
-        my $png_file = ($Opt{'gauss'}) ? "$tmpdir/$chr.gausssymbols.png" : "$tmpdir/$chr.symbols.png";
-        open RCMD, ">$r_cmd_file"
-            or die "Couldn\'t open $r_cmd_file for writing: $!\n";
-        print RCMD <<"DOC";
-
-datapoints <- read.table("$symbol_file", sep="\\t");
-data <- as.matrix(datapoints);
-bitmap(file="$png_file", type="png16m");
-pos <- data[,1];
-ratio <- as.numeric(data[,2]);
-geno <- data[,3];
-sig <- data[,4];
-state <-data[,5];
-threes <- rep($stateline, length(pos));
-plot(pos, ratio, col=ifelse(sig=="S", "white", ifelse(geno=="het", "green", "lightblue")), ylim=c($ylow, $yhigh), pch=ifelse(sig=="S", 16, 1), cex=ifelse(sig=="S", 0.0, ifelse(geno=="het", 0.0, 0.1)));
-points(pos, ratio, col=ifelse(sig=="S", "white", ifelse(geno=="het", "green", "white")), pch=ifelse(sig=="S", 16, 1), cex=ifelse(sig=="S", 0.0, ifelse(geno=="het", 0.1, 0.0)));
-points(pos, ratio, col=ifelse(sig=="S", "red", ifelse(geno=="het", "white", "white")), pch=ifelse(sig=="S", 16, 1), cex=ifelse(sig=="S", 0.2, ifelse(geno=="het", 0.0, 0.0)));
-points(pos, threes, col=ifelse(state==1, "red", ifelse(state==2, "green", ifelse(state==3, "yellow", "blue"))));
-dev.off();
-
-DOC
- 
-        close RCMD
-            or die "Couldn\'t close file $r_cmd_file!\n";
-        my $r_cmd = "$R_EXE --file=$r_cmd_file";
-        system("$r_cmd")==0
-            or warn "Failed to plot symbols for chromosome $chr!\n";
-
-        # now histograms of normalized read depths:
-        $r_cmd_file = "$tmpdir/$chr.hist.r";
-        open RCMD, ">$r_cmd_file"
-            or die "Couldn\'t open $r_cmd_file for writing: $!\n";
-        print RCMD <<"DOC";
-
-datapoints <- read.table("$tmpdir/$chr.symbols.txt", sep="\\t");
-data <- as.matrix(datapoints);
-bitmap(file="$tmpdir/$chr.covghist.png", type="png16m");
-ratio <- as.numeric(data[,2]);
-hist(ratio, breaks=50);
-dev.off();
-
-DOC
-
-        close RCMD
-            or die "Couldn\'t close file $r_cmd_file!\n";
-        $r_cmd = "$R_EXE --file=$r_cmd_file";
-        system("$r_cmd")==0
-            or warn "Failed to plot coverage histogram for chromosome $chr!\n";
-
-    } 
-
-} # end plot_symbols
-
 sub process_commandline {
     
     # Set defaults here
     %Opt = ( 
-             max_q => 0.05, insert => 300, min_som_reads => 10, skip_cna => 1
+             max_q => 0.05, insert => 300, min_som_reads => 10, minindel => 10
            );
     GetOptions(\%Opt, qw(
-                region=s ref=s counts som_file=s
+                region=s ref=s counts som_file=s indel_file=s
                 het_file=s bh vs_file=s vcf_file=s max_q=f test_fof=s
-                outfile=s outdir=s symbols input=s plots power covg minqual=i 
-                min_som_reads=i mapqual=i
-                viterbi insert=i annovar=s annovardb=s buildver=s skip_tests skip_cna!
-                annotate gauss help+ version verbose 
+                outfile=s outdir=s input=s plots power covg minqual=i 
+                min_som_reads=i minindel=i mapqual=i acctests testall
+                insert=i annovar=s annovardb=s buildver=s skip_tests
+                annotate help+ version verbose 
                )) || pod2usage(0);
     if ($Opt{help})    { pod2usage(verbose => $Opt{help}); }
     if ($Opt{version}) { die "$0, ", q$Revision: $, "\n"; }
@@ -1174,6 +1003,12 @@ This option specifies a directory in which to place result files for this run.  
 directory doesn't exist, it will be created.  By default, Shimmer will create a randomly named
 directory called "run_shimmer_XXXXXX" within the current working directory (where "XXXXXX"
 is a random string of length 6).
+
+=item B<--testall>
+
+This option causes the Fisher's Exact Test to be performed on all sites with the specified
+minimum number of alternate alleles, not just sites at which the normal sample has homozygous
+reference genotype.
 
 =back
 

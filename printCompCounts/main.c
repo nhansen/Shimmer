@@ -85,18 +85,18 @@ main(int argc, char **argv)
 	sprintf(cmd, "samtools mpileup -f %s -BQ0 -d100000 -A %s %s", parameters->fasta, parameters->bam1, parameters->bam2);
 
         if (strcmp(parameters->region, "") != 0) {
-		sprintf(tmpcmd, "%s -r %s", &cmd, parameters->region);
-		sprintf(cmd, "%s", &tmpcmd);
+		sprintf(tmpcmd, "%s -r %s", cmd, parameters->region);
+		sprintf(cmd, "%s", tmpcmd);
 	}
 
         if (strcmp(parameters->bedfile, "") != 0) {
-                sprintf(tmpcmd, "%s -l %s", &cmd, parameters->bedfile);
-                sprintf(cmd, "%s", &tmpcmd);
+                sprintf(tmpcmd, "%s -l %s", cmd, parameters->bedfile);
+                sprintf(cmd, "%s", tmpcmd);
         }
 
 	if (parameters->mapqual != 0) {
-		sprintf(tmpcmd, "%s -q %i", &cmd, parameters->mapqual);
-		sprintf(cmd, "%s", &tmpcmd);
+		sprintf(tmpcmd, "%s -q %i", cmd, parameters->mapqual);
+		sprintf(cmd, "%s", tmpcmd);
 	}
 
         /* check to be sure we can open mpileup */

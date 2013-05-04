@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <zlib.h>
 #include "printcomp.h"
+#define MAXDEPTH 1000000
 
 extern Params *parameters;
 
@@ -42,8 +43,8 @@ main(int argc, char **argv)
 	int totalBases2;
 	char *charPtr;
 	char *chrPtr;
-	char cmd[1000000];
-	char tmpcmd[1000000];
+	char cmd[10000];
+	char tmpcmd[10000];
 	char mapQual, baseQual;
 	int baseQualNo;
         char nextChar;
@@ -61,15 +62,22 @@ main(int argc, char **argv)
 	int posLength;
 	int refID; /* store current reference base as an integer */
 	int sampleShift;
-	char posBases[3000000];
-	char posString[3000000];
+	/* char posBases[3000000]; */
+	char *posBases;
+	char posString[50];
 	char chromosome[1000];
-	char* baseArray = "ATGCN";
+	char baseArray[6] = "ATGCN";
 	int maxBases;
 	int maxBase;
 	int nextMaxBases;
 	int nextMaxBase;
 	int baseCount;
+
+	posBases = (char *)malloc(sizeof(char) * MAXDEPTH);
+	if (!posBases) {
+		fprintf(stderr, "Unable to allocate space for base array!\n");
+		exit(1);
+	}
 
         get_params(argc, argv);
 

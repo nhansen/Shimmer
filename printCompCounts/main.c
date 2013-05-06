@@ -90,7 +90,7 @@ main(int argc, char **argv)
         chunkSize = 4096;
 
 	/* base command which is always run */
-	sprintf(cmd, "samtools mpileup -f %s -BQ0 -d100000 -A %s %s", parameters->fasta, parameters->bam1, parameters->bam2);
+	sprintf(cmd, "samtools mpileup -f %s -BQ0 -d100000 -A", parameters->fasta);
 
         if (strcmp(parameters->region, "") != 0) {
 		sprintf(tmpcmd, "%s -r %s", cmd, parameters->region);
@@ -106,6 +106,9 @@ main(int argc, char **argv)
 		sprintf(tmpcmd, "%s -q %i", cmd, parameters->mapqual);
 		sprintf(cmd, "%s", tmpcmd);
 	}
+
+	sprintf(tmpcmd, "%s %s %s", cmd, parameters->bam1, parameters->bam2);
+	sprintf(cmd, "%s", tmpcmd);
 
         /* check to be sure we can open mpileup */
 	if ((fil = popen(cmd,"r")) == NULL) {

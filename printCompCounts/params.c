@@ -32,12 +32,14 @@ get_params(argc, argv)
     char **argv;
 {
     int i;
+    char *emptyptr;
 
     parameters = (Params *) malloc(sizeof(Params));
 
-    char empty[10] = "";
-    parameters->region = empty;
-    parameters->bedfile = empty;
+    emptyptr = (char *) malloc(sizeof(char));
+    strcpy(emptyptr, "");
+    parameters->region = emptyptr;
+    parameters->bedfile = emptyptr;
     parameters->minqual = 0;
     parameters->mapqual = 0;
 

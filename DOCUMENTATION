@@ -59,7 +59,8 @@ OPTIONS
 
        --max_q max_acceptable_FDR
             This option specifies the maximum FDR level to be set for the Benjamini-Hochberg
-            procedure for multiple testing correction. (Default=0.05)
+            procedure for multiple testing correction. A value of 0 will cause shimmer to 
+            report all tests including those with q values equal to 1.  (Default=0.05)
 
        --annovardb path_to_annovar_db_directory
             This option allows the user to specify an ANNOVAR database directory against

@@ -235,8 +235,9 @@ sub print_counts {
             my $nonindel1 = $total1 - $indel1;
             my $nonindel2 = $total2 - $indel2;
             next if ($nonindel1 < 0 || $nonindel2 < 0); # skip ugly regions for now
+            my $geno = call_genotype($indel1, $total1, $ra_het_count_limits);
             if (($total1 >= $min_indel_reads) && ($indel1 + $indel2 >= $min_indel_reads)) {
-                print INDELS "$indel\t$chr\t$pos\t$ref\t$nonindel1\t$nonindel2\t$indel_string\t$indel1\t$indel2\tNA\n";
+                print INDELS "$indel\t$chr\t$pos\t$ref\t$nonindel1\t$nonindel2\t$indel_string\t$indel1\t$indel2\t$geno\n";
             }
             next;
         }
@@ -370,7 +371,7 @@ while (length(input <- readLines(con, n=1000)) > 0) {
         allele_counts <- as.numeric(allele_counts);
         geno <- linevec[[1]][[10]];
         dim(allele_counts) <- c(2,2);
-        if ((("$type" == "som") && (geno == "hom")) || (("$type"=="som") && ("$test_opt"=="all")) || (("$type" == "het") && (geno == "het")) || ("$type" == "indel")) {
+        if ((("$type" == "som") && (geno == "hom")) || (("$type"=="som") && ("$test_opt"=="all")) || (("$type" == "het") && (geno == "het")) || (("$type" == "indel") && (geno == "hom"))) {
             exact_result <- fisher.test(allele_counts);
             pvalue <- exact_result["p.value"];
             output <- paste(linevec[[1]][[1]], linevec[[1]][[2]], linevec[[1]][[3]], linevec[[1]][[4]], linevec[[1]][[5]], linevec[[1]][[6]], linevec[[1]][[7]], linevec[[1]][[8]], linevec[[1]][[9]], linevec[[1]][[10]], pvalue, sep=":");
@@ -467,6 +468,7 @@ sub bh_correct_tests {
     foreach my $rh_line (@sorted_pvalues) {
         my $pvalue = $rh_line->{'pvalue'};
         my $qvalue = ($pvalue eq "NA") ? "NA" : $no_tests*$rh_line->{'pvalue'}/$index;
+        $qvalue = 1.0 if ($qvalue > 1.0);
         last if (($max_q) && ($qvalue ne "NA") && ($qvalue > $max_q));
     
         $index++;
@@ -530,7 +532,7 @@ sub write_vs_file {
             $index++;
         }
         else { # indel file has different format
-            my ($indels, $chr, $pos, $ref, $normref_count, $tumorref_count, $indel_string, $normdiv_count, $tumordiv_count, $dummy, $pvalue, $qvalue) = split /\t/, $_;
+            my ($indels, $chr, $pos, $ref, $normref_count, $tumorref_count, $indel_string, $normdiv_count, $tumordiv_count, $geno, $pvalue, $qvalue) = split /\t/, $_;
             my $indel_type = ($indel_string =~ /^\+/) ? 'ins' : 'del';
             $indel_string =~ s/^[+-]\d+//;
             my $indel_length = length($indel_string);
@@ -976,7 +978,9 @@ default, all reads' bases are included.
 =item B<--max_q> I<max_acceptable_FDR>
 
 This option specifies the maximum FDR level to be set for the 
-Benjamini-Hochberg procedure for multiple testing correction. (Default=0.05)
+Benjamini-Hochberg procedure for multiple testing correction.  A value of 0
+will cause shimmer to report all tests including those with q values equal to
+1.  (Default=0.05)
 
 =item B<--annovardb> I<path_to_annovar_db_directory>
 

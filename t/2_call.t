@@ -32,7 +32,8 @@ like $out, qr/11/, "$script map qual count";
 system("rm -rf $outdir");
 system("perl -w -I lib $script --ref $testref --outdir $outdir $testbam1 $testbam2 --minqual 30 > t/calltest.out 2>&1");
 $out = `awk '\$2==11589022 {print \$9}' t/testout/som_counts.txt`;
-like $out, qr/41/, "$script base qual count";
+# altered test output condition because github version of samtools is lowering some quality scores to 0
+like $out, qr/^4[01]$/, "$script base qual count";
 $out = `awk '\$2==120396876 {print \$4, \$5, \$6}' t/testout/somatic_diffs.vcf`;
-like $out, qr/^C\sT\s470$/, "$script vcf file";
+like $out, qr/^C\sT\s4(69|70)$/, "$script vcf file";
 system("rm -rf $outdir");

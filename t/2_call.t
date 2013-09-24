@@ -32,9 +32,10 @@ like $out, qr/11/, "$script map qual count";
 system("rm -rf t/test2out");
 system("perl -w -I lib $script --ref $testref --outdir t/test3out $testbam1 $testbam2 --minqual 30 > t/calltest3.out 2>&1");
 $out = `awk '\$2==11589022 {print \$9}' t/test3out/som_counts.txt`;
-like $out, qr/41/, "$script base qual count";
+# altered test output condition because github version of samtools is lowering some quality scores to 0
+like $out, qr/^4[01]$/, "$script base qual count";
 $out = `awk '\$2==120396876 {print \$4, \$5, \$6}' t/test3out/somatic_diffs.vcf`;
-like $out, qr/^C\sT\s470$/, "$script vcf file";
+like $out, qr/^C\sT\s4(69|70)$/, "$script vcf file";
 system("rm -rf t/test3out");
 system("printCompCounts -fasta $testref -bam1 $testbam1 -bam2 $testbam2 -bedfile $testbedfile > t/calltest4.out 2>&1");
 $out = `grep -v 'mpileup' t/calltest4.out | grep -v 'bam_header' | wc -l`;

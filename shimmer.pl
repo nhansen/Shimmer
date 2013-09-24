@@ -40,7 +40,7 @@ if ($program_name !~ /^\//) { # add path
 my $short_program_name = $program_name;
 $short_program_name =~ s:.*/::; # without path
 
-my $Usage = "Usage: $short_program_name <--region chr1:1000-2000> <--ref reference fasta> <bam file from normal sample> <bam file from mutated sample>\nFor more information, type \"perldoc $short_program_name\".";
+my $Usage = "Usage: $short_program_name <--region chr1:1000-2000> <--bedfile bed file of regions> <--ref reference fasta> <bam file from normal sample> <bam file from mutated sample>\nFor more information, type \"perldoc $short_program_name\".";
 
 my $printcounts_exe = "printCompCounts";
 
@@ -53,6 +53,7 @@ my $bam1 = $ARGV[0];
 my $bam2 = $ARGV[1];
 my $ref_fasta = $Opt{'ref'};
 my $region = $Opt{'region'};
+my $bedfile = $Opt{'bedfile'};
 my $minqual = $Opt{'minqual'}; # disregard any base with quality lower than minqual
 my $mapqual = $Opt{'mapqual'}; # disregard any read with mapping quality lower than mapqual
 my $min_indel_reads = $Opt{'minindel'}; # disregard any indel without this total number of reads' coverage (in both samples)
@@ -71,7 +72,7 @@ if ($Opt{'counts'}) {
 
     if (!$som_file || !$het_file || !(-e $som_file) || !(-e $het_file)) { # need to generate count files
         # print counts of different alleles at all interesting positions
-        print_counts($ref_fasta, $bam1, $bam2, $region, $minqual, $mapqual, $som_file, $het_file, $indel_file, $printcounts_exe);
+        print_counts($ref_fasta, $bam1, $bam2, $region, $bedfile, $minqual, $mapqual, $som_file, $het_file, $indel_file, $printcounts_exe);
     }
     # test counts for significance with Fisher's exact test (without mult testing corr)
     test_counts($som_file, $het_file, $indel_file);
@@ -110,7 +111,7 @@ elsif ($Opt{'covg'}) {
 
 }
 else {
-    run_shimmer($program_name, $ref_fasta, $bam1, $bam2, $region, $minqual);
+    run_shimmer($program_name, $ref_fasta, $bam1, $bam2, $region, $bedfile, $minqual);
 }
 
 ## Subroutine to run all of the steps of Shimmer
@@ -122,6 +123,7 @@ sub run_shimmer {
     my $bam1 = shift;
     my $bam2 = shift;
     my $region = shift;
+    my $bedfile = shift;
     my $minqual = shift;
 
     if ($Opt{'outdir'} && !(-e $Opt{'outdir'})) {
@@ -139,10 +141,12 @@ sub run_shimmer {
     if ((!$Opt{'som_file'}) || (!$Opt{'het_file'})) { 
         my $command = "$shimmer --counts --ref $ref_fasta $bam1 $bam2 --min_som_reads $Opt{min_som_reads} --som_file $tmpdir/som_counts.txt --het_file $tmpdir/het_counts.txt --indel_file $tmpdir/indel_counts.txt";
         $command .= " --region $region" if ($region);
+        $command .= " --bedfile $bedfile" if ($bedfile);
         $command .= " --minqual $minqual" if ($minqual);
         $command .= " --mapqual $mapqual" if ($mapqual);
         $command .= " --minindel $min_indel_reads" if ($min_indel_reads);
         $command .= " --testall" if ($Opt{'testall'});
+        print "$command\n";
         system($command) == 0
             or die "Failed to run $shimmer --counts!\n";
     }
@@ -194,6 +198,7 @@ sub print_counts {
     my $bam1 = shift;
     my $bam2 = shift;
     my $region = shift;
+    my $bedfile = shift;
     my $minqual = shift;
     my $mapqual = shift;
     my $som_file = shift;
@@ -209,6 +214,7 @@ sub print_counts {
     # call mpileup (via the c-script "printCompCounts"), and select sites that are independent, but have enough coverage/diversity to be informative
     my $printcounts_call = "$printcounts_exe -bam1 $bam1 -bam2 $bam2 -fasta $ref_fasta";
     $printcounts_call .= " -region $region" if ($region);
+    $printcounts_call .= " -bedfile $bedfile" if ($bedfile);
     $printcounts_call .= " -minqual $minqual" if ($minqual);
     $printcounts_call .= " -mapqual $mapqual" if ($mapqual);
     
@@ -877,7 +883,7 @@ sub process_commandline {
              max_q => 0.05, insert => 300, min_som_reads => 10, minindel => 10
            );
     GetOptions(\%Opt, qw(
-                region=s ref=s counts som_file=s indel_file=s
+                region=s bedfile=s ref=s counts som_file=s indel_file=s
                 het_file=s bh vs_file=s vcf_file=s max_q=f test_fof=s
                 outfile=s outdir=s input=s plots power covg minqual=i 
                 min_som_reads=i minindel=i mapqual=i acctests testall
@@ -957,6 +963,12 @@ This option specifies a region as a reference entry (chromosome), optionally
 followed by a position range, and causes the program to limit somatic call to
 only that region.  By default, the program calls variants in all regions 
 that covered by reads in both BAM files.
+
+=item B<--bedfile> I<bedfilename>
+
+This option specifies the path of a BED formatted file containing regions to
+be tested for somatic variants.  Limiting regions with this option can increase
+power to detect somatic variation by reducing the number of tests performed.
 
 =item B<--ref> I<reference_fasta_file>
 

@@ -248,6 +248,7 @@ main(int argc, char **argv)
 
 				}
 				else if (posBases[i] == '*') { /* placeholder */
+					baseQual = fgetc( fil ); /* correction for unfortunate discovery that deletions have base qualities in mpileup format! */
 				}
 				else { /* a base */
 					baseQual = fgetc( fil );
@@ -258,7 +259,7 @@ main(int argc, char **argv)
 					else {
 						totalBases2++;
 					}
-					/* printf("New base qual %c score %i\n", baseQual, baseQualNo); */
+					/* printf("New base %c qual %c score %i\n", posBases[i], baseQual, baseQualNo); */
 
                                         /* can calculate map quality of read from stacked quals here (stored cyclically?) */
 

@@ -377,7 +377,7 @@ while (length(input <- readLines(con, n=1000)) > 0) {
         allele_counts <- as.numeric(allele_counts);
         geno <- linevec[[1]][[10]];
         dim(allele_counts) <- c(2,2);
-        if ((("$type" == "som") && (geno == "hom")) || (("$type"=="som") && ("$test_opt"=="all")) || (("$type" == "het") && (geno == "het")) || (("$type" == "indel") && (geno == "hom"))) {
+        if ((("$type" == "som") && ((geno == "hom") || (geno == "und"))) || (("$type"=="som") && ("$test_opt"=="all")) || (("$type" == "het") && (geno == "het")) || (("$type" == "indel") && (geno == "hom"))) {
             exact_result <- fisher.test(allele_counts);
             pvalue <- exact_result["p.value"];
             output <- paste(linevec[[1]][[1]], linevec[[1]][[2]], linevec[[1]][[3]], linevec[[1]][[4]], linevec[[1]][[5]], linevec[[1]][[6]], linevec[[1]][[7]], linevec[[1]][[8]], linevec[[1]][[9]], linevec[[1]][[10]], pvalue, sep=":");

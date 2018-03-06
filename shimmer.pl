@@ -11,7 +11,7 @@
 
 use strict;
 use Getopt::Long;
-use Pod::Usage;
+#use Pod::Usage;
 use File::Temp qw /tempfile tempdir /;
 
 use vars qw($VERSION);
@@ -155,7 +155,10 @@ sub run_shimmer {
         my $max_q = $Opt{'max_q'};
         open SOMFOF, ">$tmpdir/som_counts.fof"
             or die "Couldn\'t open $tmpdir/som_counts.fof for writing: $!\n";
-        print SOMFOF "$tmpdir/som_counts.tests.txt\n";
+        my $test_output = $Opt{'som_file'} || "$tmpdir/som_counts.txt";
+        $test_output =~ s/\.txt$//;
+        $test_output .= '.tests.txt'; 
+        print SOMFOF "$test_output\n";
         close SOMFOF;
 
         my $command = "$shimmer --max_q $max_q --test_fof $tmpdir/som_counts.fof --bh --vs_file $tmpdir/somatic_diffs.vs --vcf_file $tmpdir/somatic_diffs.vcf --outfile $tmpdir/som_counts.bh.txt $bam1 $bam2";
@@ -166,7 +169,10 @@ sub run_shimmer {
 
         open INDELFOF, ">$tmpdir/indel_counts.fof"
             or die "Couldn\'t open $tmpdir/indel_counts.fof for writing: $!\n";
-        print INDELFOF "$tmpdir/indel_counts.tests.txt\n";
+        my $indel_test_output = $Opt{'indel_file'} || "$tmpdir/indel_counts.txt";
+        $indel_test_output =~ s/\.txt$//;
+        $indel_test_output .= '.tests.txt'; 
+        print INDELFOF "$indel_test_output\n";
         close INDELFOF;
 
         (system("$shimmer --max_q $max_q --test_fof $tmpdir/indel_counts.fof --bh --vs_file $tmpdir/somatic_indels.vs --outfile $tmpdir/indel_counts.bh.txt $bam1 $bam2") == 0)
@@ -408,9 +414,9 @@ DOC
         my $last = 0;
         my @vals = ();
         while (<ROUTPUT>) {
-            if (/^\[1\]\s(\S+)$/) {
+            if (/^\[1\]\s(.+)$/) {
                  my $output = $1;
-                 $output =~ s/:/\t/g;
+                 $output =~ s/:\s*/\t/g;
                  print TEST "$output\n";
             }
         }

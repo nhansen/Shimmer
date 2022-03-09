@@ -35,3 +35,4 @@ typedef struct params {
 } Params;
 
 void free_params();
+void get_params(int argc, char** argv);

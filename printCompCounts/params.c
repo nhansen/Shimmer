@@ -27,7 +27,7 @@
 
 Params *parameters;
 
-get_params(argc, argv)
+void get_params(argc, argv)
     int argc;
     char **argv;
 {
